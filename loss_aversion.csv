@@ -1,0 +1,9 @@
+﻿option_id,description,expected_value
+1,Sure gain of $5,5
+2,"50% chance to gain $12, 50% chance to gain $0",6
+3,Sure loss of $5,-5
+4,"50% chance to lose $10, 50% chance to lose $0",-5
+5,Sure gain of $10,10
+6,"75% chance to gain $20, 25% chance to gain $0",15
+7,Sure loss of $8,-8
+8,"60% chance to lose $15, 40% chance to lose nothing",-9
