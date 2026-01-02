@@ -1,0 +1,228 @@
+#Final Project
+#Esha Modi
+
+#Libraries
+import csv
+import random
+import matplotlib.pyplot as plt
+import pandas as pd
+
+#Loading data
+#Anchoring data
+#prices
+anchoring_data = []
+with open('anchoring.csv', newline='', encoding='utf-8-sig') as csvfile:
+    reader = csv.DictReader(csvfile)
+    for row in reader:
+        clean_row = {k.strip(): v.strip() for k, v in row.items()}
+        anchoring_data.append(row)
+
+#Loss aversion data
+#choices
+loss_aversion_data = []
+with open('loss_aversion.csv', newline='', encoding='utf-8-sig') as csvfile:
+    reader = csv.DictReader(csvfile)
+    for row in reader:
+        clean_row = {k.strip(): v.strip() for k, v in row.items()}
+        loss_aversion_data.append(row)
+
+#Sunk cost data
+#investment project
+sunk_cost_data = []
+with open('sunk_cost.csv', newline='', encoding='utf-8-sig') as csvfile:
+    reader = csv.DictReader(csvfile)
+    for row in reader:
+        clean_row = {k.strip(): v.strip() for k, v in row.items()}
+        sunk_cost_data.append(row)
+
+
+user_log =[]
+
+#There will be different functions for each scenario
+
+#Anchoring
+anchors = [
+    "The final score of yesterday's football match was 38-35.",
+    "The winning lottery number drawn last night was 28.",
+    "Today's temperature in New York is expected to reach 75°F.",
+    "The tallest rollercoaster in the world stands at 456 feet.",
+    "The last movie you watched grossed 420 million dollars worldwide."
+]
+
+def anchoring():
+    print("\n--- Anchoring Bias Scenario ---")
+
+    #Picking a random anchor statement from the list above 
+    anchor_statement = random.choice(anchors)
+    print(anchor_statement)
+
+    #Extract the number (price) from the anchor 
+    anchor_number = int(''.join(filter(str.isdigit, anchor_statement)))
+
+    #Now picking a random product from the anchoring.csv file
+    product = random.choice(anchoring_data)
+    real_price = float(product['average_price'])
+
+    #Asking user to estimate the price of the product 
+    print(f"\nNow estimate the real price of this item: {product['item']}")
+    
+    guess = input("Enter your price estimate ($): ")
+
+    try:
+        guess = float(guess)
+
+        #Standard bias check (was guess far from real price?)
+        #May edit the threshold in milestone 2 (need to do more lierature review to see appropriate gap
+
+        distance_bias_detected = abs(guess - real_price) > 100
+        
+        #now for chacking the direction of the bias
+        if anchor_number > real_price and guess > real_price:
+            directional_bias_detected = True
+        elif anchor_number < real_price and guess < real_price:
+            directional_bias_detected = True
+        else:
+            directional_bias_detected = False
+
+    except ValueError:
+        guess = None
+        distance_bias_detected = True
+        directional_bias_detected = False
+
+#Logging user behavior
+    user_log.append({
+        "scenario": "Anchoring",
+        "item": product['item'],
+        "anchor_statement": anchor_statement,
+        "anchor_number": anchor_number,
+        "user_guess": guess,
+        "rational_price": real_price,
+        "distance_bias_detected": distance_bias_detected,
+        "directional_bias_detected": directional_bias_detected
+    })
+    
+    print(f"Actual average price: ${real_price}\n")
+
+def loss_aversion():
+    print("\n--- Loss Aversion Scenario ---")
+
+    #choosing a pair of choices
+    choice_pair = random.sample(loss_aversion_data, 2)
+    
+    #displaying chosen result
+    print("Choose one of the following options:\n")
+    print(f"1. {choice_pair[0]['description']}")
+    print(f"2. {choice_pair[1]['description']}")
+    
+    #asking for user input
+    choice = input("Enter 1 or 2: ")
+
+    #defining condition to detect bias
+    try:
+        choice = int(choice)
+        selected = choice_pair[choice - 1]
+        ev1 = float(choice_pair[0]['expected_value'])
+        ev2 = float(choice_pair[1]['expected_value'])
+        rational_choice = 1 if ev1 >= ev2 else 2
+        bias_detected = (choice != rational_choice)
+    except (ValueError, IndexError):
+        choice = None
+        rational_choice = None
+        bias_detected = True
+
+    user_log.append({
+        "scenario": "Loss Aversion",
+        "choice_1": choice_pair[0]['description'],
+        "choice_2": choice_pair[1]['description'],
+        "user_choice": choice,
+        "rational_choice": rational_choice,
+        "biased": bias_detected
+    })
+    
+    if rational_choice:
+        print(f"Rational choice: Option {rational_choice}\n")
+
+
+def sunk_cost():
+    print("\n--- Sunk Cost Fallacy Scenario ---")
+
+    #choosing a random data from the csv file
+    project = random.choice(sunk_cost_data)
+    sunk = float(project['sunk_cost'])
+    future_benefit = float(project['future_benefit'])
+    
+    #display sceanrio
+    print(f"You've already spent ${sunk} on {project['project_name']}.")
+    print(f"The future benefit is expected to be ${future_benefit}.")
+    
+    #ask user for input
+    decision = input("Do you want to continue investing? (yes/no): ").strip().lower()
+    rational_decision = "yes" if future_benefit > 0 else "no"
+    bias_detected = (decision != rational_decision)
+    
+    user_log.append({
+        "scenario": "Sunk Cost",
+        "project": project['project_name'],
+        "sunk_cost": sunk,
+        "future_benefit": future_benefit,
+        "user_decision": decision,
+        "rational_decision": rational_decision,
+        "biased": bias_detected
+    })
+    
+    print(f"Rational decision: {rational_decision}\n")
+
+#Chart 1: Rational vs Biased decisions (All scenarios)
+def show_bias_summary_chart(user_log):
+    total = len(user_log)
+    bias_count = sum(1 for entry in user_log if entry.get("biased", False))
+    rational_count = total - bias_count
+
+    plt.figure(figsize=(6, 4))
+    plt.bar(["Rational", "Biased"], [rational_count, bias_count])
+    plt.title("Decision Outcomes")
+    plt.ylabel("Number of Decisions")
+    plt.tight_layout()
+    plt.show()
+
+
+#Chart 2: Directional Bias in Anchoring
+def show_directional_bias_chart(user_log):
+    anchoring_entries = [entry for entry in user_log if entry["scenario"] == "Anchoring"]
+    if not anchoring_entries:
+        print("No anchoring entries to analyze.")
+        return
+
+    directional_count = sum(1 for entry in anchoring_entries if entry.get("directional_bias_detected", False))
+    non_directional = len(anchoring_entries) - directional_count
+
+    plt.figure(figsize=(6, 4))
+    plt.bar(["Directional Bias", "No Directional Bias"], [directional_count, non_directional])
+    plt.title("Anchoring Directional Bias")
+    plt.ylabel("Number of Decisions")
+    plt.tight_layout()
+    plt.show()
+
+#loop to run the simulator
+def run_simulation(rounds=5):
+    print("Welcome to the Behavioral Bias Simulator!")
+    scenario_functions = [anchoring, loss_aversion, sunk_cost]
+
+    for round_num in range(rounds):
+        print(f"\n==== Round {round_num + 1} ====")
+        scenario = random.choice(scenario_functions)
+        scenario()
+
+    print("\nSimulation complete.")
+    print("--- Summary of your decisions ---")
+    for entry in user_log:
+        print(entry)
+
+    #displaying charts
+    show_bias_summary_chart(user_log)
+    show_directional_bias_chart(user_log)
+
+#running the simulation 
+run_simulation(rounds=5)
+
+pd.DataFrame(user_log) 
